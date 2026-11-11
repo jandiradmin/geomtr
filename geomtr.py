@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""geomtr — mtr с геолокацией и AS для каждого хопа.
+"""geomtr: mtr with geolocation and ASN for every hop.
 
-Запускает системный `mtr --raw`, парсит поток в реальном времени и
-обогащает каждый IP данными из ip-api.com (бесплатно, без токена).
+Runs the system `mtr --raw`, parses its stream in real time and enriches
+every hop IP with data from ip-api.com (free, no API key).
 
-Примеры:
-    ./geomtr.py bo.in.ua
-    ./geomtr.py -c 20 -i 0.5 8.8.8.8
-    ./geomtr.py -c 10 --report --json out.json google.com
+Examples:
+    geomtr example.com
+    geomtr -c 20 -i 0.5 8.8.8.8
+    geomtr -c 10 --report -o out.json example.com
 """
 import argparse
 import csv
@@ -22,6 +22,8 @@ import threading
 import time
 import urllib.request
 
+__version__ = "0.1.0"
+
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -32,8 +34,8 @@ GEO_URL = "http://ip-api.com/batch?fields=status,message,country,countryCode,reg
 class Hop:
     def __init__(self, nr):
         self.nr = nr
-        self.ips = []          # все IP, ответившие на этом хопе (ECMP)
-        self.ip = None         # последний ответивший IP
+        self.ips = []          # every IP that answered at this hop (ECMP)
+        self.ip = None         # most recent responding IP
         self.host = None
         self.sent = 0
         self.recv = 0
@@ -62,13 +64,13 @@ class Hop:
 
     @property
     def loss(self):
-        # последний отправленный пакет может быть ещё в пути — не считаем его потерянным
+        # the latest probe may still be in flight, so do not count it as lost
         sent = self.sent - 1 if self.sent > self.recv else self.sent
         return 100.0 * (sent - self.recv) / sent if sent > 0 else 0.0
 
 
 class Geo:
-    """Кэш геоданных с пакетной подгрузкой в фоне."""
+    """Geo data cache with batched background lookups."""
 
     def __init__(self, enabled=True):
         self.enabled = enabled
@@ -104,7 +106,7 @@ class Geo:
             with self.lock:
                 while not self.pending:
                     self.cv.wait()
-            time.sleep(0.5)  # собираем пачку
+            time.sleep(0.5)  # let a batch accumulate
             with self.lock:
                 batch = list(self.pending)[:100]
             try:
@@ -130,7 +132,7 @@ class Geo:
                     else:
                         self.data[ip] = {"location": res.get("message", "unknown"), "as": ""}
                     self.pending.discard(ip)
-            time.sleep(4.5)  # лимит ip-api: 15 batch-запросов в минуту
+            time.sleep(4.5)  # ip-api free tier: 15 batch requests per minute
 
 
 class Tracer:
@@ -177,7 +179,7 @@ class Tracer:
                     h.host = val
 
     def visible_hops(self):
-        """Хопы до цели включительно (mtr шлёт пробы и дальше)."""
+        """Hops up to and including the target (mtr keeps probing past it)."""
         with self.lock:
             hops = [self.hops[k] for k in sorted(self.hops)]
         last = len(hops)
@@ -186,7 +188,7 @@ class Tracer:
                 last = i + 1
                 break
         else:
-            # обрезаем хвост из «*», если дальше нет ответивших хопов
+            # trim trailing "*" hops when nothing further answers
             while last > 0 and not hops[last - 1].ip:
                 last -= 1
             if last < len(hops):
@@ -248,21 +250,22 @@ def export(rows, path):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="mtr с геолокацией IP (ip-api.com)")
+    ap = argparse.ArgumentParser(description="mtr with per-hop geolocation and ASN (ip-api.com)")
     ap.add_argument("target")
-    ap.add_argument("-c", "--count", type=int, default=0, help="число циклов (0 = бесконечно, до Ctrl+C)")
-    ap.add_argument("-i", "--interval", type=float, default=1.0, help="интервал между циклами, сек")
-    ap.add_argument("-n", "--no-dns", action="store_true", help="не резолвить имена хостов")
+    ap.add_argument("-c", "--count", type=int, default=0, help="number of cycles (0 = run until Ctrl+C)")
+    ap.add_argument("-i", "--interval", type=float, default=1.0, help="seconds between cycles")
+    ap.add_argument("-n", "--no-dns", action="store_true", help="do not resolve hostnames")
     fam = ap.add_mutually_exclusive_group()
-    fam.add_argument("-4", dest="family", action="store_const", const=4, help="только IPv4")
-    fam.add_argument("-6", dest="family", action="store_const", const=6, help="только IPv6")
-    ap.add_argument("--no-geo", action="store_true", help="не запрашивать геоданные")
-    ap.add_argument("--report", action="store_true", help="без live-экрана, только итоговая таблица")
-    ap.add_argument("-o", "--output", help="сохранить результат в .json или .csv")
+    fam.add_argument("-4", dest="family", action="store_const", const=4, help="use IPv4 only")
+    fam.add_argument("-6", dest="family", action="store_const", const=6, help="use IPv6 only")
+    ap.add_argument("--no-geo", action="store_true", help="skip geolocation lookups")
+    ap.add_argument("--report", action="store_true", help="no live view, print the final table only")
+    ap.add_argument("-o", "--output", help="save results to a .json or .csv file")
+    ap.add_argument("-V", "--version", action="version", version=f"geomtr {__version__}")
     args = ap.parse_args()
 
     if not shutil.which("mtr"):
-        sys.exit("mtr не найден: brew install mtr")
+        sys.exit("mtr not found. Install it first: brew install mtr (macOS) or apt install mtr-tiny (Debian/Ubuntu)")
 
     count = args.count or 10**7
     tracer = Tracer(args.target, count, args.interval, not args.no_dns, args.family)
@@ -272,12 +275,12 @@ def main():
 
     console = Console()
     ver = f" IPv{args.family}" if args.family else ""
-    title = f"geomtr{ver} → {args.target}   (Ctrl+C — стоп)"
+    title = f"geomtr{ver} → {args.target}   (Ctrl+C to stop)"
     try:
         if args.report:
-            with console.status(f"Трассировка {args.target}…"):
+            with console.status(f"Tracing {args.target}…"):
                 reader.join()
-                time.sleep(1.5)  # даём догрузиться гео
+                time.sleep(1.5)  # let pending geo lookups finish
         else:
             with Live(render(tracer, title), console=console, refresh_per_second=2, screen=False) as live:
                 while reader.is_alive():
@@ -295,7 +298,7 @@ def main():
         console.print(render(tracer, f"geomtr{ver} → {args.target}"))
     if args.output:
         export(build_rows(tracer), args.output)
-        console.print(f"Сохранено: {args.output}")
+        console.print(f"Saved: {args.output}")
 
 
 if __name__ == "__main__":

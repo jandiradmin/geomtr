@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geomtr"
+version = "0.1.0"
+description = "mtr with geolocation: live traceroute showing city, country and ASN for every hop. No API token needed."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Yan Hordashevskyy" }]
+requires-python = ">=3.8"
+dependencies = ["rich>=13"]
+keywords = ["mtr", "traceroute", "geoip", "geolocation", "network", "asn", "cli"]
+classifiers = [
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Networking :: Monitoring",
+]
+
+[project.urls]
+Homepage = "https://github.com/jandiradmin/geomtr"
+
+[project.scripts]
+geomtr = "geomtr:main"
+
+[tool.setuptools]
+py-modules = ["geomtr"]

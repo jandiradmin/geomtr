@@ -3,3 +3,6 @@ __pycache__/
 *.json
 *.csv
 .DS_Store
+build/
+*.egg-info/
+dist/

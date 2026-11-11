@@ -2,18 +2,7 @@
 
 **`mtr` with geolocation.** A live traceroute table that shows the city, country and AS of every hop. No API token, no signup.
 
-```
-$ geomtr -4 status.ks.ua
-┏━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━┳━━━━━━━┓
-┃ Nr ┃ IP             ┃ Host                         ┃ Location                    ┃ AS                          ┃ Loss% ┃ Snt ┃   Avg ┃
-┡━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━╇━━━━━━━┩
-│  1 │ 192.168.85.1   │                              │ Private network             │                             │   0.0 │  10 │   4.1 │
-│  … │                │                              │                             │                             │       │     │       │
-│  9 │ 212.162.25.90  │ pantel.edge9.frankfurt1.l…   │ Frankfurt am Main, Hesse, DE│ AS3356 Level 3 Parent, LLC  │   0.0 │  10 │ 182.0 │
-│ 10 │ 91.239.136.198 │                              │ Kyiv, Kyiv City, UA         │ AS35213 TOV "Kompjuternie…  │   0.0 │  10 │ 190.8 │
-│ 11 │ 193.151.240.4  │ web.status.ks.ua             │ Kyiv, Kyiv City, UA         │ AS25482 ISP STATUS          │   0.0 │  10 │ 193.5 │
-└────┴────────────────┴──────────────────────────────┴─────────────────────────────┴─────────────────────────────┴───────┴─────┴───────┘
-```
+![geomtr demo](assets/demo.gif)
 
 ## Features
 
@@ -27,17 +16,26 @@ $ geomtr -4 status.ks.ua
 
 ## Install
 
-Requires [`mtr`](https://github.com/traviscross/mtr) and Python 3.8+.
+**Homebrew (macOS / Linux):**
 
 ```bash
-# macOS
-brew install mtr
-# Debian / Ubuntu
-sudo apt install mtr-tiny
+brew install jandiradmin/tap/geomtr
+```
 
+**pipx:**
+
+```bash
+pipx install git+https://github.com/jandiradmin/geomtr.git
+```
+
+`mtr` must be installed and in your PATH (`brew install mtr` or `sudo apt install mtr-tiny`). Homebrew installs it for you.
+
+**From source:**
+
+```bash
 git clone https://github.com/jandiradmin/geomtr.git
 cd geomtr
-pip install -r requirements.txt
+pip install rich
 ln -s "$PWD/geomtr.py" ~/.local/bin/geomtr   # any directory in your PATH
 ```
 
