@@ -1,10 +1,10 @@
 class Geomtr < Formula
   include Language::Python::Virtualenv
 
-  desc "mtr with geolocation: live traceroute with city, country and ASN for every hop"
+  desc "Live mtr traceroute with city, country and ASN for every hop"
   homepage "https://github.com/jandiradmin/geomtr"
   url "https://github.com/jandiradmin/geomtr/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "TARBALL_SHA256"
+  sha256 "a12b2f023a115cfdf3bab9c290b71fef51419d03c97400dda6756c046032e7e1"
   license "MIT"
 
   depends_on "mtr"
